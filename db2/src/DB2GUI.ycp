@@ -95,9 +95,6 @@
 		Wizard::SetContents(headline, contents, help_text, have_back_button,
 				    have_next_button);
 	
-		/* force update FIXME: do we need this? */	
-		Wizard::SetStage(wizard_stage, false);
-
 		/* wait for user input */	   
 		return(UI::UserInput());
 	}
@@ -151,8 +148,6 @@
 
 		Wizard::SetContents(headline, contents, help_text, have_back_button,
 			have_next_button);
-
-		Wizard::SetStage(wizard_stage, false);
 
 		while(true)
 		{
@@ -226,8 +221,6 @@
 		Wizard::SetContents(headline, contents, help_text, have_back_button,
 				    have_next_button);
 
-		Wizard::SetStage(wizard_stage, false);
-
 		while(true)
 		{
 			retval = UI::UserInput();
@@ -288,8 +281,6 @@
 
 		Wizard::SetContents(headline, contents, help_text, have_back_button,
 			have_next_button );
-
-		Wizard::SetStage(wizard_stage, false);
 
 		while(true)
 		{
@@ -409,8 +400,6 @@
 
 		Wizard::SetContents(headline, contents, help_text, have_back_button, have_next_button);
 
-		Wizard::SetStage(wizard_stage, false);
-
 		while(true)
 		{
 			retval = UI::UserInput();
@@ -522,8 +511,6 @@
 		Wizard::SetContents(headline, contents, help_text, have_back_button,
 			have_next_button);
 
-		Wizard::SetStage(wizard_stage, false);
-
 		retval = UI::UserInput();
 
 		if(UI::QueryWidget(`id(`rb), `CurrentButton) == 0)
@@ -575,8 +562,6 @@
 
 		Wizard::SetContents(headline, contents, help_text, have_back_button,
 			have_next_button);
-
-		Wizard::SetStage(wizard_stage, false);
 
 		while(true)
 		{
@@ -681,8 +666,6 @@
 		Wizard::SetContents(headline, contents, help_text, have_back_button,
 			have_next_button );
 
-		Wizard::SetStage(wizard_stage, false);
-
 		retval = UI::UserInput();
 
 		if (DB2DATA::DB2["__DB2_RESPONSE_FILE"]:"error")
@@ -726,9 +709,6 @@
 			Wizard::SetContents(headline, contents, help_text, have_back_button,
 					    have_next_button);
 	
-			/* force update FIXME: do we need this? */	
-			Wizard::SetStage(wizard_stage, false);
-
 			/* install DB2 UDB */
 			return(DB2INSTALL::install_db2(DB2DATA::DB2));
 		}
@@ -774,9 +754,6 @@
 		Wizard::SetContents(headline, contents, help_text, have_back_button,
 				    have_next_button);
 	
-		/* force update FIXME: do we need this? */	
-		Wizard::SetStage(wizard_stage, false);
-
 		while(true)
 		{
 			retval = UI::UserInput();
