@@ -1,0 +1,37 @@
+FILES=DB2DATA.ycp DB2GUI.ycp db2_install.ycp DB2INSTALL.ycp stinger48.png stinger32.png stinger22.png yast_db2_ese_template.rsp yast2_db2setup Makefile.sles9 db2.desktop
+
+COMPILE=DB2DATA.ybc DB2GUI.ybc DB2INSTALL.ybc
+
+COMPILE:  ${FILES}  
+	make -f Makefile.sles9
+
+install: ${FILES} ${COMPILE}
+	install -d -m 755 ${RPM_BUILD_ROOT}{/usr/share/YaST2/theme/SuSELinux/icons/48x48/apps,/usr/share/YaST2/theme/SuSELinux/icons/32x32/apps,/usr/share/YaST2/theme/SuSELinux/icons/22x22/apps,/usr/share/YaST2/clients,/usr/share/YaST2/modules,/usr/share/YaST2/bin,/usr/share/applications/YaST2,/var/adm/fillup-templates}
+	install -m 644 stinger48.png /usr/share/YaST2/theme/SuSELinux/icons/48x48/apps/stinger.png
+	install -m 644 stinger32.png /usr/share/YaST2/theme/SuSELinux/icons/32x32/apps/stinger.png
+	install -m 644 stinger22.png /usr/share/YaST2/theme/SuSELinux/icons/22x22/apps/stinger.png
+	install -m 644 db2.desktop   /usr/share/applications/YaST2/db2.desktop
+	install -m 755 yast2_db2setup /usr/share/YaST2/bin/yast2_db2setup
+	install -m 644 db2_install.ycp /usr/share/YaST2/clients/db2_install.ycp
+	install -m 644 DB2DATA.ycp   /usr/share/YaST2/modules/DB2DATA.ycp
+	install -m 644 DB2DATA.ybc   /usr/share/YaST2/modules/DB2DATA.ybc
+	install -m 644 DB2GUI.ycp   /usr/share/YaST2/modules/DB2GUI.ycp
+	install -m 644 DB2GUI.ybc   /usr/share/YaST2/modules/DB2GUI.ybc
+	install -m 644 DB2INSTALL.ycp  /usr/share/YaST2/modules/DB2INSTALL.ycp
+	install -m 644 DB2INSTALL.ybc  /usr/share/YaST2/modules/DB2INSTALL.ybc
+	install -m 644 yast_db2_ese_template.rsp /var/adm/fillup-templates/yast_db2_ese_template.rsp	
+
+uninstall:
+	rm /usr/share/YaST2/theme/SuSELinux/icons/48x48/apps/stinger.png
+	rm /usr/share/YaST2/theme/SuSELinux/icons/32x32/apps/stinger.png
+	rm /usr/share/YaST2/theme/SuSELinux/icons/22x22/apps/stinger.png
+	rm /usr/share/applications/YaST2/db2.desktop
+	rm /usr/share/YaST2/bin/yast2_db2setup
+	rm /usr/share/YaST2/clients/db2_install.ycp
+	rm /usr/share/YaST2/modules/DB2DATA.ycp
+	rm /usr/share/YaST2/modules/DB2DATA.ybc
+	rm /usr/share/YaST2/modules/DB2GUI.ycp
+	rm /usr/share/YaST2/modules/DB2GUI.ybc
+	rm /usr/share/YaST2/modules/DB2INSTALL.ycp
+	rm /usr/share/YaST2/modules/DB2INSTALL.ybc
+	rm /var/adm/fillup-templates/yast_db2_ese_template.rsp

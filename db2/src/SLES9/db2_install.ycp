@@ -1,0 +1,180 @@
+/************************************************************************
+ *                                                                      *
+ *                         __   __    ____ _____                        *
+ *                         \ \ / /_ _/ ___|_   _|                       *
+ *                          \ V / _` \___ \ | |                         *
+ *                           | | (_| |___) || |                         *
+ *                           |_|\__,_|____/ |_|                         *
+ *                                                                      *
+ *                Module for the IBM DB2 Universal Database             *
+ *                                                                      *
+ ************************************************************************
+
+   Copyright (C) 2003  SUSE LINUX AG, Nuernberg, Germany
+
+   Author:     David Strbac <strbac@suse.de>
+
+   $Id$
+
+
+   This file is part of yast2_db2setup.
+
+   yast2_db2setup is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   yast2_db2setup is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with yast2_db2setup; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
+   USA
+
+
+ ************************************************************************
+ *                                                                      *
+ *  FILE:     db2_install.ycp                                           *
+ *                                                                      *
+ *  FUNCTION: YaST Wizard Sequencer for DB2 Installation and            *
+ *            Configuration                                             *
+ *                                                                      *
+ ***********************************************************************/
+
+
+
+{
+	import "Sequencer";
+
+	import "Wizard";
+	import "Popup";
+
+	import "DB2GUI";
+	import "DB2DATA";
+	import "DB2INSTALL";
+
+
+	/* function to handel the "abort" and window manager "close" button */
+	define symbol abort_install()
+	``{
+		if (Popup::YesNo("Really abort?"))
+			return(`finished);
+		else
+			return(`back);
+	}
+
+	/* error handling funktion */
+	define symbol install_error(string message)
+	``{
+		if (Popup::AnyQuestion("Error", message, "&Back", "Abo&rt", `focus_yes))
+			return(`summary);
+		else
+			return(`abort);
+	}
+
+	define symbol error_response_file(string message)
+	``{
+		if (Popup::AnyQuestion("Error", message, "&Back", "Abo&rt", `focus_yes))
+			return(`summary);
+		else
+			return(`abort);
+	}
+
+	/* aliases for the wizard sequencer */
+	map Aliases =
+	$[
+		/* installation dialog funktions */
+		"introduction":		``(DB2GUI::stage_1(1, false, true)),
+		"license":		``(DB2GUI::stage_2(2, true, true)),
+		"inst_type":		``(DB2GUI::stage_3(3, true, true)),
+		"summary":		``(DB2GUI::stage_8(14, true, true)),
+
+		/* install DB2 */
+	/*	"write_response_file":	``(DB2GUI::stage_9()),*/
+		"install_db2":		``(DB2GUI::stage_10(15, false, true)),
+
+		/* results and infos */
+		"show_result":		``(DB2GUI::stage_11(16, false, true)),
+
+		/* error or abort functions */
+		"error_response_file":	``(install_error("Could not save response file!")),
+		"error_install":	``(install_error("Installation error! Log in the log files for detailed information")),
+		"abort_install":	``(abort_install())
+		
+	];
+
+
+
+	/* sequence description */
+	map Sequence =
+	$[
+		"ws_start":	"introduction",
+		"introduction":
+		$[
+			`next:	"license",
+			`abort:	"abort_install",
+			`cancel:"abort_install"
+		],
+		"license":
+		$[
+			`next:	"inst_type",
+			`abort:	"abort_install",
+			`cancel:"abort_install"
+		],
+		"inst_type":
+		$[
+			`next:	"summary",
+			`abort:	"abort_install",
+			`cancel:"abort_install"
+		],
+		
+		"summary":
+		$[
+			`next:	"install_db2",
+			`abort:	"abort_install",
+			`cancel:"abort_install"
+		],
+		"install_db2":
+		$[
+			`next:	"show_result",
+			
+		],
+		"show_result":
+		$[
+			`next:	`ws_finish,
+			`abort:	"abort_install",
+			`cancel:"abort_install"
+		],
+		"abort_install":
+		$[
+			`finished: `ws_finished
+		],
+		"error_response_file":
+		$[
+			`abort:	"abort_install",
+			`summary: "summary"
+		],
+		"error_install":
+		$[
+			`abort:	"abort_install",
+			`summary: "summary"
+		],
+	];
+
+
+
+
+
+
+
+	/* initial dialog creation */
+	Wizard::CreateDialog();
+
+
+
+	/* start sequencer */
+	return(Sequencer::Run(Aliases, Sequence));
+}

@@ -1,0 +1,838 @@
+/************************************************************************
+ *                                                                      *
+ *                         __   __    ____ _____                        *
+ *                         \ \ / /_ _/ ___|_   _|                       *
+ *                          \ V / _` \___ \ | |                         *
+ *                           | | (_| |___) || |                         *
+ *                           |_|\__,_|____/ |_|                         *
+ *                                                                      *
+ *                Module for the IBM DB2 Universal Database             *
+ *                                                                      *
+ ************************************************************************
+
+   Copyright (C) 2003  SUSE LINUX AG, Nuernberg, Germany
+
+   Author:	David Strbac <strbac@suse.de>
+		Frank Balzer <frank.balzer@suse.com>
+
+   $Id$
+
+
+   This file is part of yast2_db2setup.
+
+   yast2_db2setup is free software; you can redistribute it and/or
+   modify it under the terms of the GNU General Public License as
+   published by the Free Software Foundation; either version 2 of the
+   License, or (at your option) any later version.
+
+   yast2_db2setup is distributed in the hope that it will be useful,
+   but WITHOUT ANY WARRANTY; without even the implied warranty of
+   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+   General Public License for more details.
+
+   You should have received a copy of the GNU General Public License
+   along with yast2_db2setup; if not, write to the Free Software
+   Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307
+   USA
+
+
+ ************************************************************************
+ *                                                                      *
+ *  FILE:     DB2GUI.ycp                                                *
+ *                                                                      *
+ *  FUNCTION: This file contains all GUI functions.                     *
+ *                                                                      *
+ ***********************************************************************/
+
+
+
+{
+	module "DB2GUI";
+	import "StorageDevices";
+	import "Wizard";
+	import "Popup";
+	
+
+	import "DB2DATA";
+	import "DB2INSTALL";
+
+	
+
+
+	string headline = "empty";
+	term contents = nil;
+	any retval = nil;
+
+
+	textdomain "ibm_db2";
+
+	define string get_home_dir()
+	``{
+		map home = (map) SCR::Execute(.target.bash_output, "echo $HOME");
+		return(deletechars(home["stdout"]:"error", "\n"));
+	}
+
+	define list<string> get_cdroms()
+	``{
+		list<string> ret = [];
+
+		ret = add(ret,"No device selected");
+				
+		foreach(map k, (list<map>)StorageDevices::cddrives,
+			``{ret = add(ret, k["linkname"]:"No device Found"); 	y2milestone("Cdroms: %1", k["linkname"]:"No device Found");} );
+		/*
+		foreach(map a,m,
+			``{ foreach(string k,string v,map a,
+				``{Popup::Message("Key: " + k + " value: " + v);});
+				});
+		*/
+		y2milestone("Cdroms: %1",ret);
+		return ret;
+	}
+
+	define string get_mountpoint(string what)
+	``{
+		list<map> l = (list<map>)SCR::Read(.etc.mtab);
+		y2milestone("Cdrom Mountpoint: %1",l);
+		foreach(map k, l,
+			``{if(k["spec"]:"error" == what) {
+				y2milestone("Cdrom Mountpoint: %1",k["file"]:"error");
+				return(k["file"]:"error");
+			   }
+			   else {
+				y2milestone("Cdrom Mountpoint: %1",k);
+			}
+				});
+
+		list s = splitstring(what,"/");
+		integer i = size(s);
+		string ret = (string)select(s,i-1,"cdrom");
+		ret = "/media/" + ret;
+		return ret;
+	}
+		
+		
+	
+
+	define boolean mount(string what) 
+	``{
+		
+		map m = (map) SCR::Execute(.target.bash_output,"mount " + what);
+		if (m["exit"]:1 == 0) {
+			return(true);
+		}
+		else {
+			Popup::Message("Error mounting " + what + "\n" + m["stderr"]:"An undefined error occured");
+			return(false);
+		}
+	}
+
+	define boolean umount(string what) 
+	``{
+		
+		map m = (map) SCR::Execute(.target.bash_output,"umount " + what);
+		if (m["exit"]:1 == 0) {
+			return(true);
+		}
+		else {
+			return(false);
+		}
+	}
+	define boolean file_exists(string what) 
+	``{
+		map m = (map) SCR::Execute(.target.bash_output,"test -x " + what);
+			if (m["exit"]:1 == 0) {
+			return(true);
+		}
+		else {
+			return(false);
+		}
+	}
+		
+	define string user_group(string u) 
+	``{
+		map m = (map) SCR::Execute(.target.bash_output,"groups " + u);
+		if (m["exit"]:1 == 0) {	
+			list l = splitstring(m["stdout"]:"none"," ");
+			string s = (string) select(l,3,"none");
+			return s;
+		}
+		return "none";
+	}	
+				
+	define list get_users(string default) 
+	``{
+		string s = "";
+		map m = (map) SCR::Execute(.target.bash_output,"cat /etc/passwd | cut -d \":\" -f1",$["stdout": s]);
+		list l = splitstring(m["stdout"]:"none","\n");
+		list l1 = prepend(l,default);
+		return l1;
+	}
+
+	define list get_groups(string default) 
+	``{
+		string s = "";
+		map m = (map) SCR::Execute(.target.bash_output,"cat /etc/group | cut -d \":\" -f1",$["stdout": s]);
+		list l = splitstring(m["stdout"]:"none","\n");
+		list l1 = prepend(l,default);
+		return l1;
+	}
+
+	define boolean user_exists(string u)
+	``{
+		map m = (map) SCR::Execute(.target.bash_output,"id " + u);
+		if (m["exit"]:1 == 0) {
+			return true;
+		}
+		return false;
+	}		
+		
+
+
+	define void feature_not_implemented()
+	``{
+		Popup::Notify("Feature not yet implemented");
+	}
+
+
+	define string help(integer stage)
+	``{
+		string file = DB2DATA::DB2["__PATH_TO_SETUP"]:"" + "/" +
+			      DB2DATA::DB2_HELP["__BASE"]:"" +  "/" +
+			      DB2DATA::DB2_HELP["__LANG"]:"" +  "/" +
+			      DB2DATA::DB2_HELP[tostring(stage)]:"";
+		y2milestone("Helpfile: %1",file);		 
+		return((string)SCR::Read(.target.string,file));
+	}	
+
+
+	global define any stage_1(integer wizard_stage, boolean have_back_button, boolean have_next_button)
+	``{
+		
+
+		headline  = "Welcome to the DB2 Setup wizard";
+
+		
+		string help_text = help(wizard_stage);
+
+		contents = `VBox(
+				`RichText("The DB2 Setup wizard will install DB2 UDB Enterprise Server " +
+					  "Edition on your computer.<p> Before you can continue, please insert the installation media in your CDROM drive and select the right device or select a directory where the installation files are located."),
+
+				`HBox(
+					`HWeight(2, `Label("CDROM Device:")),
+					`HWeight(3, `Label("")),
+					`HWeight(3, `ComboBox(`id(`device),"", get_cdroms())),
+					`HWeight(2, `HStretch())
+				),
+				`HBox (
+					`HWeight(2, `Label("Directory:")),
+					`HWeight(3, `TextEntry( `id( `dir ), "", DB2DATA::DB2["__PATH_TO_SETUP"]:""  )),
+					`HWeight(3,`PushButton(`id(`open_dir), _("Select &Directory"))),
+					`HWeight(2, `HStretch())
+				),
+				`VStretch()
+				);				
+
+		/* set wizard content, headline and help text */	
+		Wizard::SetContents(headline, contents, help_text, have_back_button,
+				    have_next_button);
+		UI::ChangeWidget(`id(`device),`Notify,true);
+		/* wait for user input */
+		while(true) {
+			retval = UI::UserInput();
+			if (retval == `open_dir) {
+		            any directory = UI::AskForExistingDirectory( DB2DATA::DB2["__PATH_TO_SETUP"]:"",  _("Select Directory"));
+		            if (directory != nil) {
+				if(file_exists((string) directory + "/db2setup")) {
+			                UI::ChangeWidget(`id(`dir), `Value, (string) directory);				
+					DB2DATA::DB2["__PATH_TO_SETUP"] = (string) directory;
+					continue;
+				}
+				else {
+					DB2DATA::DB2["__PATH_TO_SETUP"] = "";
+					Popup::Message("Can't find programm db2setup at  " + (string) directory);
+					
+					continue;
+				}
+					
+			    }
+		            continue;
+		        }
+			if(retval == `abort) {
+				return(retval);
+			}
+			if(retval == `next) {
+				if(DB2DATA::DB2["__PATH_TO_SETUP"]:"" == "" ) {
+					Popup::Message("You must select a CDROM-device or a valid directory to continue!");
+					continue;
+				}
+				else {
+					return(retval);
+				}
+			}
+			else {
+				if (UI::QueryWidget(`id(`device), `Value) ==  "No device selected") {
+					Popup::Message("You must select a CDROM-device or a valid directory to continue!");
+					continue;
+				}
+				else {
+					string cdrom  = (string)UI::QueryWidget(`id(`device), `Value);
+					boolean c = mount(cdrom);
+					if (c) {
+						string cdrompath = get_mountpoint(cdrom);
+						if(file_exists(cdrompath + "/db2setup")) {
+							DB2DATA::DB2["__PATH_TO_SETUP"] = cdrompath;
+							UI::ChangeWidget(`id(`dir), `Value, (string) "");
+							continue;
+						}
+						else {
+							DB2DATA::DB2["__PATH_TO_SETUP"] = "";
+							Popup::Message("Can't find programm db2setup on  " + cdrom);
+							umount(cdrom);
+							continue;
+						}			
+	
+					}
+					else {
+						umount(cdrom);
+					}
+				}
+			}
+		}
+					
+			
+
+			
+	}
+
+
+
+	global define any stage_2(integer wizard_stage, boolean have_back_button, boolean have_next_button)
+	``{
+		headline  = "Software License Agreement";
+
+		
+		string help_text = help(wizard_stage);
+
+
+		/* FIXME: put this into DB2 module */
+		/* read license file */
+	
+		map output = (map) SCR::Execute(.target.bash_output, "echo " + DB2DATA::DB2["__PATH_TO_SETUP"]:"/media/cdrom" + "/db2/license/en_US.iso88591/ese_LI_en"); 	
+		/*string db2_license = SCR::Read("/data3/DB2/db2linux/db2linux/db2linux_v81fp5/ese/db2/license/de_DE", "de_DE.iso88591");*/
+		
+		string db2_license = (string) SCR::Read(.target.string, deletechars(output["stdout"]:"error", "\n"));
+
+		/* workaround for M$ DOS file format */
+ 		list<string> l = splitstring(deletechars(db2_license, "\r"), "\n");
+
+		db2_license = "";
+
+		foreach(string v, l,
+		``{if (v == "")
+			db2_license = db2_license + "<p>\n";
+		else
+			db2_license = db2_license + v + "\n";
+		});
+		
+
+		
+		contents = `VBox(
+				`VWeight(1,
+					`RichText("Please read the accompanying license agreement carefulle before " +
+						  "using the Program. By selecting \"Accept\" below or using the "     +
+						  "Program, you agree to accept the terms of this agreement. If "    +
+						  "you select \"Decline\", installation will not be completed and "    +
+						  "you will not be able to use this Program.")
+				),
+				`VWeight(2,
+					`RichText( db2_license )
+				),
+				`RadioButtonGroup(`id(`rb), `VBox(
+					`Left(`RadioButton(`id(0), "&Accept",
+						DB2DATA::DB2["LIC_AGREEMENT"]:"error" == "ACCEPT")),
+					`Left(`RadioButton(`id(1), "&Decline",
+						DB2DATA::DB2["LIC_AGREEMENT"]:"error" == "DECLINE"))
+				))
+				);
+
+
+		Wizard::SetContents(headline, contents, help_text, have_back_button,
+			have_next_button);
+		
+		
+		while(true)
+		{
+			retval = UI::UserInput();
+
+			if (retval == `next && UI::QueryWidget(`id(`rb), `CurrentButton) == 1)
+			{
+				boolean b = Popup::YesNo("You have selected to decline the license agreement.\n" +
+							 "Installation has not been completed. You may restart\n" +
+							 "installation later or you may return the Program to the\n" +
+							 "party (IBM or its reseller) from whom it was acquired and\n" +
+							 "request a refund.\n" +
+							 "\n" +
+							 "Dou you really whish to decline the license agreement?");
+				if (b == true)
+					b = Popup::YesNo("Are you shure you want to cancel the DB2 UDB Enterprise\n" +
+								 "Server Edition installation?");
+				if (b == true)
+					return(`silent_exit);
+
+				continue;
+			}
+			else
+			{
+				if (UI::QueryWidget(`id(`rb), `CurrentButton) == 0)
+					DB2DATA::DB2["LIC_AGREEMENT"] = "ACCEPT";
+				else
+					DB2DATA::DB2["LIC_AGREEMENT"] = "DECLINE";
+				return(retval);
+			}
+		}
+	}
+
+
+
+
+	define void install_check() 
+	``{
+		UI::ChangeWidget(`id(`rb1),`Notify,true);
+		UI::ChangeWidget(`id(`rb2),`Notify,true);
+		UI::ChangeWidget(`id(`rb3),`Notify,true);
+		if ((boolean)UI::QueryWidget(`id(`rb1),`Value) == true || (boolean)UI::QueryWidget(`id(`rb2),`Value) == true ) {
+			UI::ChangeWidget(`id(`name),`Enabled,true);
+			UI::ChangeWidget(`id(`group),`Enabled,true);
+			UI::ChangeWidget(`id(`pw),`Enabled,true);
+			UI::ChangeWidget(`id(`pw1),`Enabled,true);
+			UI::ChangeWidget(`id(`das_name),`Enabled,true);
+			UI::ChangeWidget(`id(`das_group),`Enabled,true);
+			UI::ChangeWidget(`id(`das_pw),`Enabled,true);
+			UI::ChangeWidget(`id(`das_pw1),`Enabled,true);
+			UI::ChangeWidget(`id(`fenced_name),`Enabled,true);
+			UI::ChangeWidget(`id(`fenced_group),`Enabled,true);
+			UI::ChangeWidget(`id(`fenced_pw),`Enabled,true);
+			UI::ChangeWidget(`id(`fenced_pw1),`Enabled,true);			
+			if ((boolean)UI::QueryWidget(`id(`rb1),`Value) == true) {
+				DB2DATA::DB2["INSTALL_TYPE"] = "TYPICAL";
+			}
+			else {
+				DB2DATA::DB2["INSTALL_TYPE"] = "COMPACT";
+			}
+			
+		}
+		else {
+			UI::ChangeWidget(`id(`name),`Enabled,false);
+			UI::ChangeWidget(`id(`group),`Enabled,false);
+			UI::ChangeWidget(`id(`pw),`Enabled,false);
+			UI::ChangeWidget(`id(`pw1),`Enabled,false);
+			UI::ChangeWidget(`id(`das_name),`Enabled,false);
+			UI::ChangeWidget(`id(`das_group),`Enabled,false);
+			UI::ChangeWidget(`id(`das_pw),`Enabled,false);
+			UI::ChangeWidget(`id(`das_pw1),`Enabled,false);
+			UI::ChangeWidget(`id(`fenced_name),`Enabled,false);
+			UI::ChangeWidget(`id(`fenced_group),`Enabled,false);
+			UI::ChangeWidget(`id(`fenced_pw),`Enabled,false);
+			UI::ChangeWidget(`id(`fenced_pw1),`Enabled,false);
+			DB2DATA::DB2["INSTALL_TYPE"] = "CUSTOM";
+		}
+	}
+
+	define void get_install_values()
+	``{
+		if ((boolean)UI::QueryWidget(`id(`rb3),`Value) == true) {
+			return;
+		}
+		DB2DATA::DB2_DAS["NAME"] = (string) UI::QueryWidget(`id(`das_name), `Value);
+		DB2DATA::DB2_INST["NAME"] = (string) UI::QueryWidget(`id(`name), `Value);	
+		DB2DATA::DB2_FENCED["NAME"] = (string) UI::QueryWidget(`id(`fenced_name), `Value);
+
+		if(user_exists(	DB2DATA::DB2_DAS["NAME"]:"none")) {
+			UI::ChangeWidget(`id(`das_group),`Enabled,false);
+			UI::ChangeWidget(`id(`das_pw),`Enabled,false);
+			UI::ChangeWidget(`id(`das_pw1),`Enabled,false);
+		}
+		else {
+			UI::ChangeWidget(`id(`das_group),`Enabled,true);
+			UI::ChangeWidget(`id(`das_pw),`Enabled,true);
+			UI::ChangeWidget(`id(`das_pw1),`Enabled,true);
+			DB2DATA::DB2_DAS["GROUP"] = (string) UI::QueryWidget(`id(`das_group), `Value);
+			DB2DATA::DB2_DAS["PASSWORD"] = (string) UI::QueryWidget(`id(`das_pw), `Value);
+			DB2DATA::DB2_DAS["PASSWORD1"] = (string) UI::QueryWidget(`id(`das_pw1), `Value);
+		}
+		if(user_exists(	DB2DATA::DB2_INST["NAME"]:"none")) {
+			UI::ChangeWidget(`id(`group),`Enabled,false);
+			UI::ChangeWidget(`id(`pw),`Enabled,false);
+			UI::ChangeWidget(`id(`pw1),`Enabled,false);
+		}
+		else {
+			UI::ChangeWidget(`id(`group),`Enabled,true);
+			UI::ChangeWidget(`id(`pw),`Enabled,true);
+			UI::ChangeWidget(`id(`pw1),`Enabled,true);
+			DB2DATA::DB2_INST["GROUP"] = (string) UI::QueryWidget(`id(`group), `Value);
+			DB2DATA::DB2_INST["PASSWORD"] = (string) UI::QueryWidget(`id(`pw), `Value);
+			DB2DATA::DB2_INST["PASSWORD1"] = (string) UI::QueryWidget(`id(`pw1), `Value);
+		}
+		if(user_exists(	DB2DATA::DB2_FENCED["NAME"]:"none")) {
+			UI::ChangeWidget(`id(`fenced_group),`Enabled,false);
+			UI::ChangeWidget(`id(`fenced_pw),`Enabled,false);
+			UI::ChangeWidget(`id(`fenced_pw1),`Enabled,false);
+		}
+		else {
+			UI::ChangeWidget(`id(`fenced_group),`Enabled,true);
+			UI::ChangeWidget(`id(`fenced_pw),`Enabled,true);
+			UI::ChangeWidget(`id(`fenced_pw1),`Enabled,true);
+			DB2DATA::DB2_FENCED["GROUP"] = (string) UI::QueryWidget(`id(`fenced_group), `Value);
+			DB2DATA::DB2_FENCED["PASSWORD"] = (string) UI::QueryWidget(`id(`fenced_pw), `Value);
+			DB2DATA::DB2_FENCED["PASSWORD1"] = (string) UI::QueryWidget(`id(`fenced_pw1), `Value);
+		}
+	}	
+
+
+	global define any stage_3(integer wizard_stage, boolean have_back_button, boolean have_next_button)
+	``{
+		headline  = "Select the installation type";
+
+		string help_text = help(wizard_stage);
+
+		contents = `VBox(`RadioButtonGroup(`id(`rb), 
+				`VWeight(1,`VBox(
+				 /*
+					`HBox(
+						`HWeight(1,`Left(`RadioButton(`id(`rb1), "&Typical: 350 - 420 MB",
+							DB2DATA::DB2["INSTALL_TYPE"]:"error" == "TYPICAL")))
+						
+					,
+					`HWeight(3,`RichText("DB2 will be installed with most features and functionality, using a typical " +
+						  "configuration with default values."))),				
+					`HBox(
+						`HWeight(1,`Left(`RadioButton(`id(`rb2), "&Compact: 270 - 330 MB",
+							DB2DATA::DB2["INSTALL_TYPE"]:"error" == "COMPACT")))
+						
+					,
+					`HWeight(3,`RichText("Basic DB2 features and functionality will be installed, and minimal " +
+						  "configuration will be performed"))),
+					`HBox(
+						`HWeight(1,`Left(`RadioButton(`id(`rb3), "C&ustom: 270 - 1080 MB",
+						DB2DATA::DB2["INSTALL_TYPE"]:"error" == "CUSTOM"))),
+					`HWeight(3,`RichText("Select the features that you want installed, and specify configuration options " +
+						  "for DB2. This option requires knowledge of DB2 features and settings.<p>This option will start the <b>DB2 Setup Wizard</b>")))
+				*/
+					`HBox(
+						`HWeight(1,`Left(`RadioButton(`id(`rb1), "&Typical: 350 - 420 MB",
+							DB2DATA::DB2["INSTALL_TYPE"]:"error" == "TYPICAL"))),
+						`HWeight(1,`Left(`RadioButton(`id(`rb2), "&Compact: 270 - 330 MB",
+							DB2DATA::DB2["INSTALL_TYPE"]:"error" == "COMPACT"))),
+						`HWeight(1,`Left(`RadioButton(`id(`rb3), "C&ustom: 270 - 1080 MB",
+							DB2DATA::DB2["INSTALL_TYPE"]:"error" == "CUSTOM")))
+						),
+					`HBox(
+						`HWeight(1,`RichText("DB2 will be installed with most features and functionality, using a typical " +
+						  "configuration with default values.")),
+						`HWeight(1,`RichText("Basic DB2 features and functionality will be installed, and minimal " +
+						  "configuration will be performed")),
+						`HWeight(1,`RichText("This option will start the <b>DB2 Setup Wizard</b>."))
+						)
+		
+				))),
+				`VWeight(2,`VBox(
+					`Frame("User settings",
+					`VBox( `HBox(`HWeight( 1,`Label("")),
+							`HWeight( 1,`Label("Username")),
+							`HWeight(1,`Label("Group")),
+							`HWeight(1,`Label("Password")),
+							`HWeight(1,`Label("Password"))),
+						`HBox(`HWeight( 1, `Label("DAS User")),
+						      `HWeight( 1,`ComboBox( `id(`das_name),`opt(`editable),"", get_users(DB2DATA::DB2_DAS["NAME"]:""))),
+						      `HWeight( 1,`ComboBox(`id(`das_group),`opt(`editable),"", get_groups(DB2DATA::DB2_DAS["GROUP"]:""))),	
+						      `HWeight( 1,`Password(`id(`das_pw),"",DB2DATA::DB2_DAS["PASSWORD"]:"")),
+						      `HWeight( 1,`Password(`id(`das_pw1),"",DB2DATA::DB2_DAS["PASSWORD"]:""))),
+						`HBox(`HWeight( 1, `Label("Instance User")),
+						      `HWeight( 1,`ComboBox(`id(`name),`opt(`editable),"", get_users(DB2DATA::DB2_INST["NAME"]:""))),
+						      `HWeight( 1,`ComboBox(`id(`group),`opt(`editable),"", get_groups(DB2DATA::DB2_INST["GROUP"]:""))),	
+						      `HWeight( 1,`Password(`id(`pw),"",DB2DATA::DB2_INST["PASSWORD"]:"")),
+						      `HWeight( 1,`Password(`id(`pw1),"",DB2DATA::DB2_INST["PASSWORD"]:""))),
+						`HBox(`HWeight( 1, `Label("Fenced User")),
+						      `HWeight( 1,`ComboBox(`id(`fenced_name),`opt(`editable),"", get_users(DB2DATA::DB2_FENCED["NAME"]:""))),
+						      `HWeight( 1,`ComboBox(`id(`fenced_group),`opt(`editable),"", get_groups(DB2DATA::DB2_FENCED["GROUP"]:""))),	
+						      `HWeight( 1,`Password(`id(`fenced_pw),"",DB2DATA::DB2_FENCED["PASSWORD"]:"")),
+						      `HWeight( 1,`Password(`id(`fenced_pw1),"",DB2DATA::DB2_FENCED["PASSWORD"]:"")))
+						)
+					)))	
+					);
+					
+			
+
+		
+
+		Wizard::SetContents(headline, contents, help_text, have_back_button,
+				    have_next_button);
+	 	
+		install_check();
+		UI::ChangeWidget(`id(`das_name),`Notify,true);
+		UI::ChangeWidget(`id(`name),`Notify,true);
+		UI::ChangeWidget(`id(`fenced_name),`Notify,true);
+		while(true)
+		{
+			retval = UI::TimeoutUserInput(100);
+			/*y2milestone("RETVAL: %1", retval);*/
+			if(retval == `timeout) {
+				get_install_values();
+				continue;
+			}
+					
+			install_check();
+			
+			if(retval == `das_name  || retval == `name || retval == `fenced_name) {
+				get_install_values();
+				
+				continue;
+			}
+				
+			if (retval == `rb1 || retval == `rb2 || retval ==`rb3) {
+				continue;
+			}
+			if(retval == `back || retval == `abort) {
+				get_install_values();
+				return retval;
+			}
+			if (retval == `next) {
+				get_install_values();
+				if (DB2DATA::DB2["INSTALL_TYPE"]:"TYPICAL" != "CUSTOM") {
+					if((DB2DATA::DB2_DAS["NAME"]:"") != "") {
+						if(!user_exists(DB2DATA::DB2_DAS["NAME"]:"none")) {
+							if((DB2DATA::DB2_DAS["GROUP"]:"") == "") {
+								Popup::Message("Group Name\nYou must specify a group for the DAS User!");
+								UI::SetFocus(`id(`das_group));
+								continue;
+							}
+							if((DB2DATA::DB2_DAS["PASSWORD"]:"") == "") {
+								Popup::Message("Password\nYou must specify a password for the DAS User!");
+								UI::SetFocus(`id(`das_pw));
+								continue;
+							}
+							
+							if(DB2DATA::DB2_DAS["PASSWORD"]:"" != DB2DATA::DB2_DAS["PASSWORD1"]:"") {
+								Popup::Message("The passwords entered for the DAS User do not match.\n"
+									+"Please re-enter the passwords before continuing");
+								UI::SetFocus(`id(`das_pw));
+								continue;
+							}
+						}
+					}
+					else {
+						Popup::Message("You must specify a DAS User!");
+						UI::SetFocus(`id(`das_group));
+						continue;
+					}
+	
+					if((DB2DATA::DB2_INST["NAME"]:"") != "") {
+						if(!user_exists(DB2DATA::DB2_INST["NAME"]:"none")) {
+							if((DB2DATA::DB2_INST["GROUP"]:"") == "") {
+								Popup::Message("Group Name\nYou must specify a group for the Instance User!");
+								UI::SetFocus(`id(`group));
+								continue;
+							}
+							if((DB2DATA::DB2_INST["PASSWORD"]:"") == "") {
+								Popup::Message("Password\nYou must specify a password for the Instance User!");
+								UI::SetFocus(`id(`pw));
+								continue;
+							}
+							
+							if(DB2DATA::DB2_INST["PASSWORD"]:"" != DB2DATA::DB2_INST["PASSWORD1"]:"") {
+								Popup::Message("The passwords entered for the Instance User do not match.\n"
+									+"Please re-enter the passwords before continuing");
+								UI::SetFocus(`id(`pw));
+								continue;
+							}
+						}
+					}
+					else {
+						Popup::Message("You must specify an Instance User!");
+						UI::SetFocus(`id(`group));
+						continue;
+					}
+					if((DB2DATA::DB2_FENCED["NAME"]:"") != "") {
+						if(!user_exists(DB2DATA::DB2_FENCED["NAME"]:"none")) {
+							if((DB2DATA::DB2_FENCED["GROUP"]:"") == "") {
+								Popup::Message("Group Name\nYou must specify a group for the Fenced User!");
+								UI::SetFocus(`id(`fenced_group));
+								continue;
+							}
+							if((DB2DATA::DB2_FENCED["PASSWORD"]:"") == "") {
+								Popup::Message("Password\nYou must specify a password for the Fenced User!");
+								UI::SetFocus(`id(`fenced_pw));
+								continue;
+							}
+							
+							if(DB2DATA::DB2_FENCED["PASSWORD"]:"" != DB2DATA::DB2_FENCED["PASSWORD1"]:"") {
+								Popup::Message("The passwords entered for the Fenced User do not match.\n"
+									+"Please re-enter the passwords before continuing");
+								UI::SetFocus(`id(`fenced_pw));
+								continue;
+							}
+						}
+					}
+					else {
+						Popup::Message("You must specify a Fenced User!");
+						UI::SetFocus(`id(`das_group));
+						continue;
+					}
+					
+				}	
+				
+				return(retval);
+			
+			}
+		}
+	}
+
+	
+
+
+
+		 
+
+
+
+	global define any stage_8(integer wizard_stage, boolean have_back_button, boolean have_next_button)
+	``{
+
+		if (DB2DATA::DB2["INSTALL_TYPE"]:"error" == "CUSTOM")
+			return(`next);
+
+	
+		headline = "Start copying files";
+
+		contents = `VBox(
+				`RichText("The DB2 Setup wizard has enough information to start copying the " +
+					  "program files. If you want to review or change any settings, click " +
+					  "Back. If you are satisfied with the settings, click Finish to begin " +
+					  "copying files.")
+					/*`Left(`Label("Current settings")),
+					`RichText(_("not yet implemented :-)"))*/
+				);
+		
+
+
+		string help_text = help(wizard_stage);
+
+
+		Wizard::SetContents(headline, contents, help_text, have_back_button,
+			have_next_button );
+
+		retval = UI::UserInput();
+
+	
+
+		return(retval);
+	}
+
+
+
+	global define any stage_10(integer wizard_stage, boolean have_back_button, boolean have_next_button)
+	``{
+		if ((string) DB2DATA::DB2["INSTALL_TYPE"]:"error" == "CUSTOM") {
+
+			headline = "Install DB2 UDB Enterprise Server Edition using DB2 Setup Wizzard";
+			string help_text = help(wizard_stage);
+			contents = `RichText("Yast2 will start now the DB2 Setup Wizzard.");
+			Wizard::SetContents(headline, contents, help_text, have_back_button,
+					    have_next_button);
+
+			UI::ChangeWidget(`id(`abort),`Enabled,false);
+			UI::ChangeWidget(`id(`next),`Enabled,false);
+
+			string prog = "/bin/bash -c " + DB2DATA::DB2["__PATH_TO_SETUP"]:"/media/cdrom" + "/db2setup";
+			
+			map m = (map)SCR::Execute(.target.bash_output, prog, $[ "LD_ASSUME_KERNEL": "2.4.21"]);
+		
+			UI::ChangeWidget(`id(`next),`Enabled,true);
+			if (m["exit"]:0 == 0) {
+				
+				return(`next);
+			}
+			else {
+				return(`next);
+			}
+		}
+
+
+		headline = "Install DB2 UDB Enterprise Server Edition";
+
+
+		string help_text = help(wizard_stage);
+		contents = `RichText("Please wait while DB2 Setup wizard installs DB2 UDB Enterprise " +
+				     "Server Edition on your computer and performs the required " +
+				     "configuration. This may take several minutes. ");
+				
+		/* set wizard content, headline and help text */	
+		Wizard::SetContents(headline, contents, help_text, have_back_button,
+					    have_next_button);
+			
+		UI::ChangeWidget(`id(`abort),`Enabled,false);
+		UI::ChangeWidget(`id(`next),`Enabled,false);
+		/* install DB2 UDB */
+		boolean check = DB2INSTALL::install_db2();
+		UI::ChangeWidget(`id(`next),`Enabled,true);
+		return(`next);
+		
+	}
+
+
+	define string read_status_report()
+	``{
+		return((string)SCR::Read(.target.string,DB2DATA::DB2["__SETUP_LOG"]:""));		
+	
+	}
+
+
+	global define any stage_11(integer wizard_stage, boolean have_back_button, boolean have_next_button)
+	``{
+		headline = "Setup is complete";
+
+		/* FIXME: add help text */
+		string help_text = help( wizard_stage);
+
+		contents = `VBox(
+				`RichText("The DB2 Setup wizard has finished copying files and configuring " +
+					  "your system" +
+					  "<p>" +
+					  "<h3>Post-install steps</h3>" +
+					  "It is recommended that you perform the following after installation, " +
+					  "if you have not already done so." +
+					  "<ul>" +
+					  "<li>Install the DB2 documentation from CD labelled DB2 HTML Documentation.</li>" +
+					  "" +
+					  "<li>Set up a DB2 instance to work with DB2.</li>" +
+					  "" +
+					  "<li>Specify the SMTP Server to be used by the DB2 Administration Server to send" +
+					  "notifications to administration contacts.</li>" +
+					  "" +
+					  "<li>Run First Steps (db2fs) as a regular user to get started with DB2 and some" +
+					  "of its features.</li>" +
+					  "</ul>"),
+				`RichText( `opt(`plainText), read_status_report()),
+				`Left(`Label("Click Finish to exit the DB2 Setup wizard."))
+				);
+
+
+		/* set wizard content, headline and help text */	
+		Wizard::SetContents(headline, contents, help_text, have_back_button,
+				    have_next_button);
+
+		UI::ChangeWidget(`id(`next),`Label,"Finish");
+		UI::ChangeWidget(`id(`abort),`Enabled,false);
+
+		retval = UI::UserInput();
+	
+		
+	}
+
+
+
+
+
+}

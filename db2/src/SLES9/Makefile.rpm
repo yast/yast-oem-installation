@@ -1,0 +1,27 @@
+#
+# Makefile for creating and preparing the rpm - package
+#
+# frank.balzer 2004
+PACKAGE=yast2-db2setup
+RPMDIR=/usr/src/packages
+VERSION=1.0
+RELEASE=1
+FILES= DB2DATA.ycp DB2GUI.ycp db2_install.ycp DB2INSTALL.ycp stinger48.png stinger32.png stinger22.png yast_db2_ese_template.rsp yast2_db2setup Makefile.sles9 db2.desktop
+SPEC=yast2-db2setup.spec
+
+
+
+tar:    ${FILES}
+	mkdir ./${PACKAGE}-${VERSION}; \
+	cp ${FILES} ./${PACKAGE}-${VERSION} ; \
+	tar cvfj ${PACKAGE}-${VERSION}.tar.bz2 ./${PACKAGE}-${VERSION} ;
+
+build:  tar ${SPEC}
+	cp ${PACKAGE}-${VERSION}.tar.bz2 /usr/src/packages/SOURCES ; \
+	cp ${SPEC} /usr/src/packages/SPECS ; \
+	rpmbuild -ba /usr/src/packages/SPECS/${SPEC}
+
+
+clean:
+	rm -rf ${PACKAGE}-${VERSION} ; \
+	rm -rf ${PACKAGE}-${VERSION}.tar.bz2
