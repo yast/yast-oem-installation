@@ -8,8 +8,6 @@
     import "Popup";	// For Popup::YesNo()
     import "Progress";
 
-    integer current_stage = 0;	// Required globally for Wizard::SetStage()
-
 
     //
     // Initialize local variables
@@ -170,11 +168,6 @@ installer."));
 	Wizard::SetContents( headline, buttons, help_text,
 			     have_back_button, have_next_button );
 
-
-	// Set the title graphics according to the current wizard stage.
-
-	Wizard::SetStage( wizard_stage,
-			  false );	// force update
 
 
 	// Wait for user input.
