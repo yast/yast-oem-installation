@@ -1,0 +1,48 @@
+Tree Step Wizard
+================
+
+Step 1
+------
+
+"We want to install Oracle now"
+"Insert CD1 and hit NEXT"
+
+Maybe selection box to select path for temproary files
+
+-> Check path for temorary files: accessability, fs size
+
+Step 2
+------
+
+"We copy CD1 to the system"
+
+-> Mount CD 1
+-> copy files
+-> Unmount CD 1
+
+"We copy CD2 to the system"
+
+-> Mount CD 2
+-> copy files
+-> Unmount CD 2
+
+"We copy CD3 to the system"
+
+-> Mount CD 3
+-> copy files
+-> Unmount CD 3
+
+"System is prepared for installation now. Hit NEXT to start the installation"
+
+Step 3
+------
+
+"The Oracle installer is now started. It should appear within the next seconds.
+Please follow the instructions on the screen."
+
+-> Run orarun (rcoracle start)
+-> sux - oracle
+-> Run "runinstaller" in $TMP/DISK1
+
+-> Delete temporary files
+-> Close Wizard.
