@@ -1,5 +1,5 @@
-Tree Step Wizard
-================
+Three Step Wizard
+=================
 
 Step 1
 ------
@@ -10,6 +10,10 @@ Step 1
 Maybe selection box to select path for temproary files
 
 -> Check path for temorary files: accessability, fs size
+
+Requirements
+============
+- Selectionbox for paths with ability to check for space in this subdir
 
 Step 2
 ------
@@ -34,6 +38,12 @@ Step 2
 
 "System is prepared for installation now. Hit NEXT to start the installation"
 
+Requirements
+============
+- Requestor: Request CD (custom textlabel), mount CD, copy CD to given
+  directory, unmount CD. Full errorhandling.
+
+
 Step 3
 ------
 
@@ -46,3 +56,8 @@ Please follow the instructions on the screen."
 
 -> Delete temporary files
 -> Close Wizard.
+
+Requirements
+============
+- call external shell command.
+- Function to delete a complete subdir (for temp. files)
