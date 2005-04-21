@@ -18,7 +18,7 @@ X-SuSE-YaST-AutoInstResource=
 X-SuSE-YaST-AutoInstDataType=list
 X-SuSE-YaST-AutoInstClonable=true
 
-Icon=stinger.png
+Icon=yast-db2
 Exec=/sbin/yast2 db2_install 
 
 Name=DB2-Install
