@@ -1,8 +1,0 @@
-YC=ycpc
-MODULEDIR=/usr/share/YaST2/modules
-MODULES=DB2DATA.ycp DB2GUI.ycp DB2INSTALL.ycp
-
-all: $(MODULES)
-	$(YC) -c -o $(MODULEDIR)/DB2DATA.ybc DB2DATA.ycp
-	$(YC) -c -o $(MODULEDIR)/DB2INSTALL.ybc DB2INSTALL.ycp
-	$(YC) -c -o $(MODULEDIR)/DB2GUI.ybc DB2GUI.ycp
